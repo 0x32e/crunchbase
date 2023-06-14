@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::Read;
 use crate::funding::Funding;
 
+// TODO: Add a flag (e.g., --override -o) to indicate whether to update the existing rows with the new ones from the csv file
 pub fn import(filename: &String) -> Result<(), Box<dyn std::error::Error>> {
 
     dotenv().ok();

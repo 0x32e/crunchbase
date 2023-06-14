@@ -4,8 +4,6 @@ TODO:
 - 
  */
 
-// use std::fs::File;
-// use std::io::Read;
 use std::env;
 
 use crate::funding::Funding;

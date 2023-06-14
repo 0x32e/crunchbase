@@ -3,6 +3,7 @@ mod api;
 
 use dotenv::dotenv;
 use clap::{Subcommand, command, Args, Parser};
+use std::thread;
 
 #[derive(Parser)]
 #[command(author, version)]
@@ -17,6 +18,7 @@ struct Cli {
 enum Commands {
     Query(Query),
     Import(Import),
+    Ask(Ask),
 }
 
 #[derive(Args)]
@@ -46,12 +48,16 @@ struct Import {
     file_name: Option<String>,
 }
 
-// #[tokio::main]
+#[derive(Args)]
+struct Ask {
+    query: Option<String>,
+}
+
 fn main() {
 
     dotenv().ok();
 
-    let cli = Cli::parse();
+    let cli: Cli = Cli::parse();
     match &cli.command {
         Some(Commands::Query(args)) => {
             let res = api::query::query(args.industry.clone(), args.days.clone(), args.limit.clone(), args.currency.clone(), args.funding_type.clone(), args.description.clone()).unwrap();
@@ -66,6 +72,20 @@ fn main() {
                 }
                 None => {
                     println!("Please provide a filename");
+                }
+            }
+        }
+        Some(Commands::Ask(args)) => {
+            match args.query {
+                Some(ref query) => {
+                    // let query_clone = query.clone();
+                    // let handle = tokio::spawn(async move {
+                    //     let _ = api::ask::ask(&query_clone).await;
+                    // });
+                    // let _ = handle.await;
+                }
+                None => {
+                    println!("Please provide a query");
                 }
             }
         }
