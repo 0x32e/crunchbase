@@ -47,9 +47,10 @@ pub fn query(
             organization_website
         FROM fundings
         WHERE 
-            TO_DATE(announced_date, 'YYYY-MM-DD') >= CURRENT_DATE - INTERVAL '{} days'
-        ORDER BY created DESC
-        LIMIT {}", days.unwrap(), limit.unwrap()), &[])? {
+            TO_DATE(announced_date, 'YYYY-MM-DD') >= CURRENT_DATE - INTERVAL '{} days' and
+            money_raised_currency = '{}'
+        ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC
+        LIMIT {}", days.unwrap(), currency.unwrap(), limit.unwrap()), &[])? {
         let funding = Funding {
             transaction_name: row.get(0),
             transaction_url: row.get(1),

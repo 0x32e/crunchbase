@@ -59,8 +59,8 @@ fn main() {
         Some(Commands::Query(args)) => {
             println!("querying...");
             let res = api::query::query(args.industry.clone(), args.days.clone(), args.limit.clone(), args.currency.clone(), args.funding_type.clone(), args.description.clone()).unwrap();
+            api::util::display_table(&res);
             println!("querying done...");
-            println!("{:?}", res);
             // TODO: Output as a table
         }
         Some(Commands::Import(args)) => {

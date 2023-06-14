@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Debug, Eq, Deserialize, PartialEq)]
+#[derive(Debug, Eq, Deserialize, PartialEq, Clone)]
 pub struct Funding {
     #[serde(rename(deserialize = "Transaction Name"))]
     pub transaction_name: Option<String>,

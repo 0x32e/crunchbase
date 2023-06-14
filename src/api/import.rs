@@ -19,24 +19,24 @@ pub fn import(filename: &String) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut reader = csv::Reader::from_reader(data.as_bytes());
 
-    let mut duplicate_fundings: Vec<String> = Vec::new();
+    // let mut duplicate_fundings: Vec<String> = Vec::new();
     let mut duplicate_count = 0;
-
-    // Ok(())
+    let mut inserted_count = 0;
 
     for result in reader.deserialize() {
         let mut record: Funding = result?;
         let exist = record_exists(&mut client, &record);
         if exist {
-            duplicate_fundings.push(record.transaction_name.unwrap());
+            // duplicate_fundings.push(record.transaction_name.unwrap());
             duplicate_count += 1;
         } else {
             insert_funding_record(&mut client, &mut record)?;
+            inserted_count += 1;
         }
     }
 
-    println!("duplicated count: {}", duplicate_count);
-    println!("duplicated: {:?}", duplicate_fundings);
+    println!("inserted: {}", inserted_count);
+    println!("already exists: {}", duplicate_count);
 
     Ok(())
 }
