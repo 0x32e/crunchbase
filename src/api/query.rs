@@ -4,26 +4,29 @@ TODO:
 - 
  */
 
-use std::fs::File;
-use std::io::Read;
+// use std::fs::File;
+// use std::io::Read;
 use std::env;
 
 use crate::funding::Funding;
 
 use postgres::{Client, NoTls};
 
-use llm_chain::chains::map_reduce::Chain;
-use llm_chain::{executor, parameters, prompt, step::Step, Parameters};
+// use llm_chain::chains::map_reduce::Chain;
+// use llm_chain::{executor, parameters, prompt, step::Step, Parameters};
 
+// TODO: Finish handling the rest of the filters
 pub fn query(
     industry: Option<String>, 
     days: Option<i8>,
     limit: Option<i8>,
     currency: Option<String>,
-    funding_type: Option<String>,
-    description: Option<String>,
+    _funding_type: Option<String>,
+    _description: Option<String>,
 ) -> Result<Vec<Funding>, Box<dyn std::error::Error>> {
 
+    println!("querying...");
+    
     let cb_postgres_uri = env::var("CB_POSTGRES_URI").expect("CB_POSTGRES_URI must be set");
     let mut client = Client::connect(cb_postgres_uri.as_str(), NoTls)?;
 
@@ -48,9 +51,10 @@ pub fn query(
         FROM fundings
         WHERE 
             TO_DATE(announced_date, 'YYYY-MM-DD') >= CURRENT_DATE - INTERVAL '{} days' and
-            money_raised_currency = '{}'
+            money_raised_currency = '{}' and
+            organization_industries LIKE '%{}%'
         ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC
-        LIMIT {}", days.unwrap(), currency.unwrap(), limit.unwrap()), &[])? {
+        LIMIT {}", days.unwrap(), currency.unwrap(), industry.unwrap(), limit.unwrap()), &[])? {
         let funding = Funding {
             transaction_name: row.get(0),
             transaction_url: row.get(1),
@@ -67,7 +71,6 @@ pub fn query(
             organization_location: row.get(12),
             organization_website: row.get(13),
         };
-        // println!("{:?}", funding);
         fundings.push(funding);
     }
 

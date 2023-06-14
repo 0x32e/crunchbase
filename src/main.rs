@@ -1,15 +1,12 @@
 mod funding;
 mod api;
 
-use std::fs::OpenOptions;
-
 use dotenv::dotenv;
 use clap::{Subcommand, command, Args, Parser};
 
 #[derive(Parser)]
 #[command(author, version)]
-#[command(about = "stringer - a simple CLI to transform and inspect strings", long_about = "stringer is a super fancy CLI (kidding)
-One can use stringer to modify or inspect strings straight from the terminal")]
+#[command(about = "cbdb - a simple CLI to fetch funding information from Crunchbase", long_about = "cbdb is a super fancy CLI (kidding)")]
 
 struct Cli {
     #[command(subcommand)]
@@ -57,11 +54,8 @@ fn main() {
     let cli = Cli::parse();
     match &cli.command {
         Some(Commands::Query(args)) => {
-            println!("querying...");
             let res = api::query::query(args.industry.clone(), args.days.clone(), args.limit.clone(), args.currency.clone(), args.funding_type.clone(), args.description.clone()).unwrap();
             api::util::display_table(&res);
-            println!("querying done...");
-            // TODO: Output as a table
         }
         Some(Commands::Import(args)) => {
             match args.file_name {
