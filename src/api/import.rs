@@ -14,6 +14,7 @@ pub fn import(filename: &String) -> Result<(), Box<dyn std::error::Error>> {
     let mut client = Client::connect(cb_postgres_uri.as_str(), NoTls)?;
 
     // TODO: I want to check if all the columns are present
+    // TODO: Use buffer to handle large csv files (e.g., line by line) 
     let mut file = File::open(format!("data/{}", filename))?;
     let mut data = String::new();
     file.read_to_string(&mut data)?;

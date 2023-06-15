@@ -78,7 +78,8 @@ fn main() {
         Some(Commands::Ask(args)) => {
             match args.query {
                 Some(ref query) => {
-                    // let query_clone = query.clone();
+                    let query_clone = query.clone();
+                    println!("{}", query_clone);
                     // let handle = tokio::spawn(async move {
                     //     let _ = api::ask::ask(&query_clone).await;
                     // });
