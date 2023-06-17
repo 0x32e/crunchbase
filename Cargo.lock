@@ -355,6 +355,7 @@ dependencies = [
  "r2d2_postgres",
  "serde",
  "tabled",
+ "thiserror",
  "tokio",
  "tokio-postgres",
 ]

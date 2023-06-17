@@ -127,6 +127,15 @@ async fn main() {
                             println!("error: {}", e);
                         },
                     }
+
+                    // match api::ask::ask_agent(&query).await {
+                    //     Ok(res) => {
+                    //         println!("Response: {}", res);
+                    //     },
+                    //     Err(e) => {
+                    //         println!("error: {}", e);
+                    //     }
+                    // }
                 }
                 None => {
                     println!("Please provide a query");
