@@ -1,10 +1,10 @@
 /*
 TODO: 
 - Ask an LLM to answer a question against the "fundings" table.
-- 
+- (Separate) worker program monitors if there's any new csv files downloaded from Crunchbase, and grabs it and process it.
  */
 
-use crate::funding::Funding;
+use crate::models::Funding;
 
 use tokio_postgres::Client;
 
@@ -26,7 +26,12 @@ pub async fn query(
 
     let mut fundings: Vec<Funding> = vec![];
 
-    let res = client.query("
+    let industry = industry
+        .map_or("".to_owned(), |i|
+            format!("and organization_industries LIKE CONCAT('%', '{}'::text, '%')", i).to_owned()
+        );
+
+    let res = client.query(&format!("
     SELECT 
         transaction_name,
         transaction_url,
@@ -45,10 +50,10 @@ pub async fn query(
     FROM fundings
     WHERE 
         TO_DATE(announced_date, 'YYYY-MM-DD') >= CURRENT_DATE - make_interval(days := $1) and
-        money_raised_currency = $2 and
-        organization_industries LIKE CONCAT('%', $3::text, '%')
+        money_raised_currency = $2
+        {}
     ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC
-    LIMIT $4", &[&days.unwrap(), &currency.unwrap(), &industry.unwrap(), &limit.unwrap()]).await;
+    LIMIT $3", industry), &[&days.unwrap(), &currency.unwrap(), &limit.unwrap()]).await;
 
     match res {
         Ok(rows) => {

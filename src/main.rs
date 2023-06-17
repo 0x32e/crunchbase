@@ -2,7 +2,6 @@ use std::env;
 use dotenv::dotenv;
 use clap::{Subcommand, command, Args, Parser};
 
-mod funding;
 mod api;
 mod models;
 
@@ -79,8 +78,7 @@ async fn main() {
 
     match cli.command {
         Some(Commands::Query(args)) => {
-
-            let res = api::query::query(
+            match api::query::query(
                 &mut client,
                 args.industry.clone(), 
                 args.days.clone(), 
@@ -88,8 +86,7 @@ async fn main() {
                 args.currency.clone(), 
                 args.funding_type.clone(), 
                 args.description.clone()
-            ).await;
-            match res {
+            ).await {
                 Ok(res) => {
                     api::util::display_table(&res);
                 },
@@ -113,9 +110,12 @@ async fn main() {
         Some(Commands::Ask(args)) => {
             match args.query {
                 Some(query) => {
-                    let query_clone = query.clone();
-                    println!("{}", query_clone);
-                    api::ask::ask(&query_clone).await.unwrap();
+                    match api::ask::ask(&query.clone()).await {
+                        Ok(_) => {},
+                        Err(e) => {
+                            println!("error: {}", e);
+                        },
+                    }
                 }
                 None => {
                     println!("Please provide a query");

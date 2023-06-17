@@ -1,7 +1,8 @@
 use dotenv::dotenv;
 use std::fs::File;
 use std::io::Read;
-use crate::funding::Funding;
+
+use crate::models::Funding;
 
 use tokio_postgres::Client;
 

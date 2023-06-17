@@ -1,6 +1,6 @@
 use tabled::{builder::Builder, settings::Style};
 use tabled::settings::{Color, style::BorderColor};
-use crate::funding::Funding;
+use crate::models::Funding;
 use num_format::{Locale, ToFormattedString};
 
 pub fn display_table(fundings: &[Funding]) {
