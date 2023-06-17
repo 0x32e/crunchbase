@@ -78,20 +78,31 @@ async fn main() {
 
     match cli.command {
         Some(Commands::Query(args)) => {
-            match api::query::query(
-                &mut client,
-                args.industry.clone(), 
-                args.days.clone(), 
-                args.limit.clone(), 
-                args.currency.clone(), 
-                args.funding_type.clone(), 
-                args.description.clone()
-            ).await {
+            // match api::query::query(
+            //     &mut client,
+            //     args.industry.clone(), 
+            //     args.days.clone(), 
+            //     args.limit.clone(), 
+            //     args.currency.clone(), 
+            //     args.funding_type.clone(), 
+            //     args.description.clone()
+            // ).await {
+            //     Ok(res) => {
+            //         api::util::display_table(&res);
+            //     },
+            //     Err(e) => {
+            //         println!("Error {}", e);
+            //     }
+            // }
+            
+            let last_days = 10;
+            let raised_currency = "USD";
+            match api::query::get_funding_count_by_industry(&mut client, last_days, raised_currency).await {
                 Ok(res) => {
-                    api::util::display_table(&res);
+                    api::util::display_funding_count(&res, last_days);
                 },
                 Err(e) => {
-                    println!("Error {}", e);
+                    println!("Error: {}", e);
                 }
             }
         }

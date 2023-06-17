@@ -11,7 +11,20 @@ use tokio_postgres::Client;
 // use llm_chain::chains::map_reduce::Chain;
 // use llm_chain::{executor, parameters, prompt, step::Step, Parameters};
 
+// TODO: Able to ask questions for the data in a thread
+// TODO: Handle subcommand
+// TODO: Median & Average funding amount
+// TODO: Use diesel crate
+// TODO: Download the latest csv files stored somewhere to update the db before starting the query
 // TODO: Finish handling the rest of the filters
+// TODO: Add a connector to a vector db and index all the company descriptions or other text data and store them as vectors.
+// TODO: Visualize the data (e.g., Group by industries)
+// TODO: Input my business ideas and the AI will give me the list of companies I should do research on
+// TODO: Business model analyzer
+// TODO: Use the "id" field from crunchbase data for easy comparison later
+// TODO: News Reporter - AI will automatically crawl the web and fetch some news articles for the companies
+// TODO: Company information analyzer (e.g., founders, techstack, etc.)
+// TODO: More Error Handlings
 pub async fn query(
     client: &mut Client,
     industry: Option<String>, 
@@ -156,4 +169,70 @@ pub async fn query(
     // // Print the result to the console
     // println!("{}", res.to_immediate().await?.as_content());
     Ok(fundings)
+}
+
+pub struct FundingCount {
+    pub industry: String,
+    pub count: i64,
+}
+
+pub async fn get_funding_count_by_industry(client: &mut Client, last_days: i32, raised_currency: &str) -> Result<Vec<FundingCount>, Box<dyn std::error::Error>> {
+    let mut funding_counts: Vec<FundingCount> = vec![];
+    let res = client.query("
+    SELECT 
+        industry, 
+        COUNT(*) as funding_count
+    FROM (
+        SELECT unnest(string_to_array(organization_industries, ', ')) as industry,
+            announced_date::date as funding_date,
+            money_raised_currency
+        FROM fundings
+    ) as subquery
+    WHERE 
+        funding_date >= CURRENT_DATE - make_interval(days := $1) and 
+        money_raised_currency = $2
+    GROUP BY industry
+    HAVING count(*) > 10
+    ORDER BY funding_count DESC", &[&last_days, &raised_currency]).await;
+    
+    match res {
+        Ok(rows) => {
+            for row in rows {
+                funding_counts.push(FundingCount{ industry: row.get(0), count: row.get(1)});
+            }
+        },
+        Err(e) => {
+            println!("Error: {}", e);
+        }
+    }
+
+    Ok(funding_counts)
+
+    // match res {
+    //     Ok(rows) => {
+    //         for row in rows {
+    //             let funding = Funding {
+    //                 transaction_name: row.get(0),
+    //                 transaction_url: row.get(1),
+    //                 organization_name: row.get(2),
+    //                 organization_description: row.get(3),
+    //                 funding_type: row.get(4),
+    //                 money_raised: row.get(5),
+    //                 money_raised_currency: row.get(6),
+    //                 money_raised_in_usd: row.get(7),
+    //                 announced_date: row.get(8),
+    //                 number_of_investors: row.get(9),
+    //                 number_of_funding_rounds: row.get(10),
+    //                 organization_industries: row.get(11),
+    //                 organization_location: row.get(12),
+    //                 organization_website: row.get(13),
+    //             };
+    //             fundings.push(funding);
+    //         }
+    //     },
+    //     Err(e) => {
+    //         println!("Error: {}", e);
+    //     }
+    // }
+
 }

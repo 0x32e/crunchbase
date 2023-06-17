@@ -3,6 +3,8 @@ use tabled::settings::{Color, style::BorderColor};
 use crate::models::Funding;
 use num_format::{Locale, ToFormattedString};
 
+use super::query::FundingCount;
+
 pub fn display_table(fundings: &[Funding]) {
     let mut builder = Builder::default();
 
@@ -40,3 +42,32 @@ pub fn display_table(fundings: &[Funding]) {
     println!("{}", table);
 }
 
+// TODO: Reuse the same logic above with generics
+pub fn display_funding_count(funding_counts: &[FundingCount], last_days: i32) {
+    let mut builder = Builder::default();
+
+    for funding_count in funding_counts {
+        builder.push_record([
+            funding_count.industry.to_owned(), 
+            funding_count.count.to_string(),
+        ]);
+    }
+
+    let columns = [
+        "Industry",
+        "Count",
+    ];
+
+    let columns = (0..builder.count_columns()).map(|i| columns[i]);
+    builder.set_header(columns);
+
+    let mut table = builder.build();
+    table.with(Style::ascii_rounded());
+    table.with(BorderColor::default().top(Color::FG_GREEN));
+    table.with(BorderColor::default().bottom(Color::FG_GREEN));
+    table.with(BorderColor::default().left(Color::FG_GREEN));
+    table.with(BorderColor::default().right(Color::FG_GREEN));
+
+    println!("Fundings by industry in the last {} days:", last_days);
+    println!("{}", table);
+}
