@@ -1,13 +1,14 @@
-mod funding;
-mod api;
-
+use std::env;
 use dotenv::dotenv;
 use clap::{Subcommand, command, Args, Parser};
-use std::thread;
+
+mod funding;
+mod api;
+mod models;
 
 #[derive(Parser)]
 #[command(author, version)]
-#[command(about = "cbdb - a simple CLI to fetch funding information from Crunchbase", long_about = "cbdb is a super fancy CLI (kidding)")]
+#[command(about = "crunchbase - a simple CLI to fetch funding information from Crunchbase", long_about = "cbdb is a super fancy CLI (kidding)")]
 
 struct Cli {
     #[command(subcommand)]
@@ -28,7 +29,7 @@ struct Query {
     industry: Option<String>,
 
     #[arg(short='d', long="days")]
-    days: Option<i8>,
+    days: Option<i32>,
 
     #[arg(short='c', long="currency")]
     currency: Option<String>,
@@ -40,7 +41,7 @@ struct Query {
     description: Option<String>,
 
     #[arg(short='l', long="limit")]
-    limit: Option<i8>,
+    limit: Option<i64>,
 }
 
 #[derive(Args)]
@@ -53,21 +54,55 @@ struct Ask {
     query: Option<String>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
 
     dotenv().ok();
 
     let cli: Cli = Cli::parse();
-    match &cli.command {
+    let cb_postgres_uri = env::var("CB_POSTGRES_URI").expect("CB_POSTGRES_URI must be set");
+
+    let postgres = tokio_postgres::connect(&cb_postgres_uri, tokio_postgres::NoTls).await;
+
+    if let Err(e) = postgres {
+        println!("Failed to connect to a Postgres db instance: {}", e);
+        return;
+    }
+
+    let (mut client, connection) = postgres.unwrap();
+
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            panic!("connection error: {}", e);
+        }
+    });
+
+    match cli.command {
         Some(Commands::Query(args)) => {
-            let res = api::query::query(args.industry.clone(), args.days.clone(), args.limit.clone(), args.currency.clone(), args.funding_type.clone(), args.description.clone()).unwrap();
-            api::util::display_table(&res);
+
+            let res = api::query::query(
+                &mut client,
+                args.industry.clone(), 
+                args.days.clone(), 
+                args.limit.clone(), 
+                args.currency.clone(), 
+                args.funding_type.clone(), 
+                args.description.clone()
+            ).await;
+            match res {
+                Ok(res) => {
+                    api::util::display_table(&res);
+                },
+                Err(e) => {
+                    println!("Error {}", e);
+                }
+            }
         }
         Some(Commands::Import(args)) => {
             match args.file_name {
                 Some(ref filename) => {
                     println!("importing '{}'...", filename);
-                    api::import::import(filename).unwrap();
+                    api::import::import(&mut client, filename).await.unwrap();
                     println!("importing done");
                 }
                 None => {
@@ -77,13 +112,10 @@ fn main() {
         }
         Some(Commands::Ask(args)) => {
             match args.query {
-                Some(ref query) => {
+                Some(query) => {
                     let query_clone = query.clone();
                     println!("{}", query_clone);
-                    // let handle = tokio::spawn(async move {
-                    //     let _ = api::ask::ask(&query_clone).await;
-                    // });
-                    // let _ = handle.await;
+                    api::ask::ask(&query_clone).await.unwrap();
                 }
                 None => {
                     println!("Please provide a query");
@@ -94,6 +126,5 @@ fn main() {
             println!("Command is missing");
         }
     }
-
 
 }

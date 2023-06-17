@@ -3,7 +3,7 @@ use tabled::settings::{Color, style::BorderColor};
 use crate::funding::Funding;
 use num_format::{Locale, ToFormattedString};
 
-pub fn display_table(fundings: &Vec<Funding>) {
+pub fn display_table(fundings: &[Funding]) {
     let mut builder = Builder::default();
 
     for funding in fundings {

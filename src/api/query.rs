@@ -4,72 +4,77 @@ TODO:
 - 
  */
 
-use std::env;
-
 use crate::funding::Funding;
 
-use postgres::{Client, NoTls};
+use tokio_postgres::Client;
 
 // use llm_chain::chains::map_reduce::Chain;
 // use llm_chain::{executor, parameters, prompt, step::Step, Parameters};
 
 // TODO: Finish handling the rest of the filters
-pub fn query(
+pub async fn query(
+    client: &mut Client,
     industry: Option<String>, 
-    days: Option<i8>,
-    limit: Option<i8>,
+    days: Option<i32>,
+    limit: Option<i64>,
     currency: Option<String>,
     _funding_type: Option<String>,
     _description: Option<String>,
 ) -> Result<Vec<Funding>, Box<dyn std::error::Error>> {
 
     println!("querying...");
-    
-    let cb_postgres_uri = env::var("CB_POSTGRES_URI").expect("CB_POSTGRES_URI must be set");
-    let mut client = Client::connect(cb_postgres_uri.as_str(), NoTls)?;
 
     let mut fundings: Vec<Funding> = vec![];
 
-    for row in client.query(&format!("
-        SELECT 
-            transaction_name,
-            transaction_url,
-            organization_name,
-            organization_description,
-            funding_type,
-            money_raised,
-            money_raised_currency,
-            money_raised_in_usd,
-            announced_date,
-            number_of_investors,
-            number_of_funding_rounds,
-            organization_industries,
-            organization_location,
-            organization_website
-        FROM fundings
-        WHERE 
-            TO_DATE(announced_date, 'YYYY-MM-DD') >= CURRENT_DATE - INTERVAL '{} days' and
-            money_raised_currency = '{}' and
-            organization_industries LIKE '%{}%'
-        ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC
-        LIMIT {}", days.unwrap(), currency.unwrap(), industry.unwrap(), limit.unwrap()), &[])? {
-        let funding = Funding {
-            transaction_name: row.get(0),
-            transaction_url: row.get(1),
-            organization_name: row.get(2),
-            organization_description: row.get(3),
-            funding_type: row.get(4),
-            money_raised: row.get(5),
-            money_raised_currency: row.get(6),
-            money_raised_in_usd: row.get(7),
-            announced_date: row.get(8),
-            number_of_investors: row.get(9),
-            number_of_funding_rounds: row.get(10),
-            organization_industries: row.get(11),
-            organization_location: row.get(12),
-            organization_website: row.get(13),
-        };
-        fundings.push(funding);
+    let res = client.query("
+    SELECT 
+        transaction_name,
+        transaction_url,
+        organization_name,
+        organization_description,
+        funding_type,
+        money_raised,
+        money_raised_currency,
+        money_raised_in_usd,
+        announced_date,
+        number_of_investors,
+        number_of_funding_rounds,
+        organization_industries,
+        organization_location,
+        organization_website
+    FROM fundings
+    WHERE 
+        TO_DATE(announced_date, 'YYYY-MM-DD') >= CURRENT_DATE - make_interval(days := $1) and
+        money_raised_currency = $2 and
+        organization_industries LIKE CONCAT('%', $3::text, '%')
+    ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC
+    LIMIT $4", &[&days.unwrap(), &currency.unwrap(), &industry.unwrap(), &limit.unwrap()]).await;
+
+    match res {
+        Ok(rows) => {
+            for row in rows {
+                let funding = Funding {
+                    transaction_name: row.get(0),
+                    transaction_url: row.get(1),
+                    organization_name: row.get(2),
+                    organization_description: row.get(3),
+                    funding_type: row.get(4),
+                    money_raised: row.get(5),
+                    money_raised_currency: row.get(6),
+                    money_raised_in_usd: row.get(7),
+                    announced_date: row.get(8),
+                    number_of_investors: row.get(9),
+                    number_of_funding_rounds: row.get(10),
+                    organization_industries: row.get(11),
+                    organization_location: row.get(12),
+                    organization_website: row.get(13),
+                };
+                fundings.push(funding);
+            }
+        },
+        Err(e) => {
+            println!("Error: {}", e);
+        }
     }
 
     // // TODO: I want to check if all the columns are present
