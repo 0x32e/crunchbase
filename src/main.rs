@@ -121,7 +121,7 @@ async fn main() {
         Some(Commands::Ask(args)) => {
             match args.query {
                 Some(query) => {
-                    match api::ask::ask(&query.clone()).await {
+                    match api::ask::run_chatgpt(&query).await {
                         Ok(_) => {},
                         Err(e) => {
                             println!("error: {}", e);
