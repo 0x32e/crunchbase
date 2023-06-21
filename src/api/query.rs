@@ -1,15 +1,62 @@
 /*
 TODO: 
 - Ask an LLM to answer a question against the "fundings" table.
-- (Separate) worker program monitors if there's any new csv files downloaded from Crunchbase, and grabs it and process it.
+- (Separate) worker program monitors if there's any new csv files downloaded from Crunchbase, and grabs it and process it
  */
 
 use crate::models::Funding;
-
+use inquire::Select;
 use tokio_postgres::Client;
 
-// use llm_chain::chains::map_reduce::Chain;
-// use llm_chain::{executor, parameters, prompt, step::Step, Parameters};
+pub async fn run_query_prompt(client: &mut Client) -> Result<Vec<Funding>, Box<dyn std::error::Error>> {
+    
+    let industry_options = vec![
+        "Crypto",
+        "Artificial Intelligence",
+        "Financial Services",
+        "Wellness",
+        "Enterprise",
+        "Cloud Computing",
+        "Health Care",
+        "Blockchain",
+        "Energy",
+        "Software",
+        "Medical",
+        "Bio",
+        "E-Commerce",
+        "Food and Beverage",
+        "Manufacturing",
+        "Education",
+        "Robotics",
+        "Human Resources",
+        "Real Estate"
+    ];
+
+    let industry = Select::new("Select industry:", industry_options)
+        .prompt()
+        .unwrap()
+        .to_owned();
+    
+    let days = Select::new("Days (last X days):", vec!["5", "10", "15", "20", "30", "60"])
+        .prompt()
+        .unwrap()
+        .to_owned()
+        .parse::<i32>()
+        .unwrap();
+    
+    let currency = Select::new("Currency (e.g., USD):", vec!["USD", "JPY", "CAD"])
+        .prompt()
+        .unwrap()
+        .to_owned();
+    
+    let limit = Select::new("How many max results do you want?", vec!["10", "20", "30", "60"])
+        .prompt()
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    
+    query(client, Some(industry), Some(days), Some(limit), Some(currency), None, None).await
+}
 
 pub async fn query(
     client: &mut Client,
@@ -157,68 +204,3 @@ pub async fn query(
     Ok(fundings)
 }
 
-pub struct FundingCount {
-    pub industry: String,
-    pub count: i64,
-}
-
-pub async fn get_funding_count_by_industry(client: &mut Client, last_days: i32, raised_currency: &str) -> Result<Vec<FundingCount>, Box<dyn std::error::Error>> {
-    let mut funding_counts: Vec<FundingCount> = vec![];
-    let res = client.query("
-    SELECT 
-        industry, 
-        COUNT(*) as funding_count
-    FROM (
-        SELECT unnest(string_to_array(organization_industries, ', ')) as industry,
-            announced_date::date as funding_date,
-            money_raised_currency
-        FROM fundings
-    ) as subquery
-    WHERE 
-        funding_date >= CURRENT_DATE - make_interval(days := $1) and 
-        money_raised_currency = $2
-    GROUP BY industry
-    HAVING count(*) > 10
-    ORDER BY funding_count DESC", &[&last_days, &raised_currency]).await;
-    
-    match res {
-        Ok(rows) => {
-            for row in rows {
-                funding_counts.push(FundingCount{ industry: row.get(0), count: row.get(1)});
-            }
-        },
-        Err(e) => {
-            println!("Error: {}", e);
-        }
-    }
-
-    Ok(funding_counts)
-
-    // match res {
-    //     Ok(rows) => {
-    //         for row in rows {
-    //             let funding = Funding {
-    //                 transaction_name: row.get(0),
-    //                 transaction_url: row.get(1),
-    //                 organization_name: row.get(2),
-    //                 organization_description: row.get(3),
-    //                 funding_type: row.get(4),
-    //                 money_raised: row.get(5),
-    //                 money_raised_currency: row.get(6),
-    //                 money_raised_in_usd: row.get(7),
-    //                 announced_date: row.get(8),
-    //                 number_of_investors: row.get(9),
-    //                 number_of_funding_rounds: row.get(10),
-    //                 organization_industries: row.get(11),
-    //                 organization_location: row.get(12),
-    //                 organization_website: row.get(13),
-    //             };
-    //             fundings.push(funding);
-    //         }
-    //     },
-    //     Err(e) => {
-    //         println!("Error: {}", e);
-    //     }
-    // }
-
-}

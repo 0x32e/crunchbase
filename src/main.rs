@@ -7,7 +7,7 @@ mod models;
 
 #[derive(Parser)]
 #[command(author, version)]
-#[command(about = "crunchbase - a simple CLI to fetch funding information from Crunchbase", long_about = "cbdb is a super fancy CLI (kidding)")]
+#[command(about = "crunchbase - a simple CLI to fetch funding information from Crunchbase", long_about = "crunchbase is a super fancy CLI (kidding)")]
 
 struct Cli {
     #[command(subcommand)]
@@ -19,6 +19,7 @@ enum Commands {
     Query(Query),
     Import(Import),
     Ask(Ask),
+    Inquire(Inquire),
 }
 
 #[derive(Args)]
@@ -53,6 +54,10 @@ struct Ask {
     query: Option<String>,
 }
 
+#[derive(Args)]
+struct Inquire {
+}
+
 #[tokio::main]
 async fn main() {
 
@@ -78,40 +83,40 @@ async fn main() {
 
     match cli.command {
         Some(Commands::Query(args)) => {
-            // match api::query::query(
-            //     &mut client,
-            //     args.industry.clone(), 
-            //     args.days.clone(), 
-            //     args.limit.clone(), 
-            //     args.currency.clone(), 
-            //     args.funding_type.clone(), 
-            //     args.description.clone()
-            // ).await {
-            //     Ok(res) => {
-            //         api::util::display_table(&res);
-            //     },
-            //     Err(e) => {
-            //         println!("Error {}", e);
-            //     }
-            // }
-            
-            let last_days = 10;
-            let raised_currency = "USD";
-            match api::query::get_funding_count_by_industry(&mut client, last_days, raised_currency).await {
-                Ok(res) => {
-                    api::util::display_funding_count(&res, last_days);
-                },
-                Err(e) => {
-                    println!("Error: {}", e);
-                }
+            match api::query::query(
+                 &mut client,
+                 args.industry.clone(), 
+                 args.days.clone(), 
+                 args.limit.clone(), 
+                 args.currency.clone(), 
+                 args.funding_type.clone(), 
+                 args.description.clone()
+             ).await {
+                 Ok(res) => {
+                     api::util::display_table(&res);
+                 },
+                 Err(e) => {
+                     println!("Error {}", e);
+                 }
             }
+            
+            // let last_days = 10;
+            // let raised_currency = "USD";
+            //match api::query::get_funding_count_by_industry(&mut client, last_days, raised_currency).await {
+            //    Ok(res) => {
+            //        api::util::display_funding_count(&res, last_days);
+            //    },
+            //    Err(e) => {
+            //        println!("Error: {}", e);
+            //    }
+            //}
         }
         Some(Commands::Import(args)) => {
             match args.file_name {
                 Some(ref filename) => {
-                    println!("importing '{}'...", filename);
+                    println!("Importing '{}'...", filename);
                     api::import::import(&mut client, filename).await.unwrap();
-                    println!("importing done");
+                    println!("Importing done");
                 }
                 None => {
                     println!("Please provide a filename");
@@ -127,23 +132,20 @@ async fn main() {
                             println!("error: {}", e);
                         },
                     }
-
-                    // match api::ask::ask_agent(&query).await {
-                    //     Ok(res) => {
-                    //         println!("Response: {}", res);
-                    //     },
-                    //     Err(e) => {
-                    //         println!("error: {}", e);
-                    //     }
-                    // }
                 }
                 None => {
                     println!("Please provide a query");
                 }
             }
         }
+        Some(Commands::Inquire(..)) => {
+            let res = api::query::run_query_prompt(&mut client)
+                .await
+                .unwrap();
+            api::util::display_table(&res);
+        }
         None => {
-            println!("Command is missing");
+            println!("Command is missing.");
         }
     }
 

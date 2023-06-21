@@ -100,3 +100,4 @@ async fn record_exists(client: &mut Client, funding: &Funding) -> bool {
 
     count > 0
 }
+
