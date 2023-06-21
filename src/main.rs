@@ -18,7 +18,6 @@ struct Cli {
 enum Commands {
     Query(Query),
     Import(Import),
-    Ask(Ask),
     Inquire(Inquire),
 }
 
@@ -46,17 +45,12 @@ struct Query {
 
 #[derive(Args)]
 struct Import {
-    file_name: Option<String>,
+    #[arg(short='f', long="filename")]
+    filename: Option<String>
 }
 
 #[derive(Args)]
-struct Ask {
-    query: Option<String>,
-}
-
-#[derive(Args)]
-struct Inquire {
-}
+struct Inquire {}
 
 #[tokio::main]
 async fn main() {
@@ -99,44 +93,11 @@ async fn main() {
                      println!("Error {}", e);
                  }
             }
-            
-            // let last_days = 10;
-            // let raised_currency = "USD";
-            //match api::query::get_funding_count_by_industry(&mut client, last_days, raised_currency).await {
-            //    Ok(res) => {
-            //        api::util::display_funding_count(&res, last_days);
-            //    },
-            //    Err(e) => {
-            //        println!("Error: {}", e);
-            //    }
-            //}
         }
         Some(Commands::Import(args)) => {
-            match args.file_name {
-                Some(ref filename) => {
-                    println!("Importing '{}'...", filename);
-                    api::import::import(&mut client, filename).await.unwrap();
-                    println!("Importing done");
-                }
-                None => {
-                    println!("Please provide a filename");
-                }
-            }
-        }
-        Some(Commands::Ask(args)) => {
-            match args.query {
-                Some(query) => {
-                    match api::ask::run_chatgpt(&query).await {
-                        Ok(_) => {},
-                        Err(e) => {
-                            println!("error: {}", e);
-                        },
-                    }
-                }
-                None => {
-                    println!("Please provide a query");
-                }
-            }
+            api::import::run_import_prompt(&mut client, args.filename)
+                .await
+                .unwrap();
         }
         Some(Commands::Inquire(..)) => {
             let res = api::query::run_query_prompt(&mut client)

@@ -1,4 +1,4 @@
-use llm_chain::{tools::{tools::{BingSearch}, ToolCollection}};
+use llm_chain::{tools::{tools::{BingSearch}}};
 use llm_chain::tools::{Tool};
 
 use llm_chain::{
@@ -10,6 +10,7 @@ use llm_chain::{
     step::Step
 };
 
+#[allow(dead_code)]
 pub async fn run_chatgpt(question: &str) -> Result<(), Box<dyn std::error::Error>> {
     let exec = executor!()?;
 
@@ -98,7 +99,8 @@ pub async fn run_chatgpt(question: &str) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-pub async fn ask(query: &str) -> Result<(), Box<dyn std::error::Error>> {
+#[allow(dead_code)]
+async fn ask(query: &str) -> Result<(), Box<dyn std::error::Error>> {
     let bing_api_key = std::env::var("BING_API_KEY").unwrap();
     let bing = BingSearch::new(bing_api_key);
     let result = bing
@@ -109,7 +111,8 @@ pub async fn ask(query: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub async fn ask_agent(query: &str) -> Result<String, Box<dyn std::error::Error>> {
+#[allow(dead_code)]
+async fn ask_agent(query: &str) -> Result<String, Box<dyn std::error::Error>> {
 
     let executor = executor!().unwrap();
     let bing_api_key = std::env::var("BING_API_KEY").unwrap();
