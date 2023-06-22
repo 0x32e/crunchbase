@@ -4,11 +4,20 @@ TODO:
 - (Separate) worker program monitors if there's any new csv files downloaded from Crunchbase, and grabs it and process it
  */
 
-use crate::models::Funding;
-use inquire::Select;
-use tokio_postgres::Client;
+use dotenv::dotenv;
+use std::env;
+use crate::models::{Funding, Fundings};
 
-pub async fn run_query_prompt(client: &mut Client) -> Result<Vec<Funding>, Box<dyn std::error::Error>> {
+use inquire::{Select, Text};
+use tokio_postgres::Client;
+use openai_api_rs::v1::api::Client as OpenAIClient;
+use openai_api_rs::v1::completion::{self, CompletionRequest};
+
+pub async fn run_query_prompt(
+    client: &mut Client
+) -> Result<(), Box<dyn std::error::Error>> {
+
+    dotenv().ok();
     
     let industry_options = vec![
         "Crypto",
@@ -37,25 +46,87 @@ pub async fn run_query_prompt(client: &mut Client) -> Result<Vec<Funding>, Box<d
         .unwrap()
         .to_owned();
     
-    let days = Select::new("Days (last X days):", vec!["5", "10", "15", "20", "30", "60"])
+    let days = Select::new("Days (e.g., last X days):", vec!["5", "10", "15", "20", "30", "60"])
         .prompt()
         .unwrap()
         .to_owned()
         .parse::<i32>()
         .unwrap();
-    
+
     let currency = Select::new("Currency (e.g., USD):", vec!["USD", "JPY", "CAD"])
         .prompt()
         .unwrap()
         .to_owned();
     
-    let limit = Select::new("How many max results do you want?", vec!["10", "20", "30", "60"])
+    let limit = Select::new(
+        "How many max results do you want? (i.e., limit)", 
+        vec!["10", "20", "30", "60"]
+    )
         .prompt()
         .unwrap()
         .parse::<i64>()
         .unwrap();
-    
-    query(client, Some(industry), Some(days), Some(limit), Some(currency), None, None).await
+
+    let res = query(
+        client, 
+        Some(industry), 
+        Some(days), 
+        Some(limit), 
+        Some(currency), 
+        None, 
+        None
+    ).await.unwrap();
+
+    let question = Text::new("Enter a question if you have any:")
+        .prompt_skippable()
+        .ok()
+        .unwrap()
+        .unwrap();
+
+    let fundings = Fundings(res);
+    let context = fundings.to_csv_string();
+
+    let answer = answer(&context, &question).await.unwrap();
+    println!("answer: {}", answer);
+
+    Ok(())
+}
+
+async fn answer(
+    context: &str, 
+    question: &str
+) -> Result<String, Box<dyn std::error::Error>> {
+    let client = OpenAIClient::new(env::var("OPENAI_API_KEY").unwrap().to_string());
+    let prompt = format!("You have the following data: {}
+    ==========
+    Based on these data, answer the following question: {}:\n", context, question);
+    // println!("Prompt: {}", prompt);
+    let req = CompletionRequest {
+        model: completion::GPT3_TEXT_DAVINCI_003.to_string(),
+        prompt: Some(String::from(prompt)),
+        suffix: None,
+        max_tokens: Some(2000),
+        temperature: Some(0.0),
+        top_p: Some(1.0),
+        n: None,
+        stream: None,
+        logprobs: None,
+        echo: None,
+        stop: Some(vec![String::from(" Human:"), String::from(" AI:")]),
+        presence_penalty: Some(0.6),
+        frequency_penalty: Some(0.0),
+        best_of: None,
+        logit_bias: None,
+        user: None,
+    };
+
+    let answer = match client.completion(req).await {
+        Ok(a) => a.choices[0].text.clone(),
+        Err(e) => {
+            String::from(format!("Failed: {}", e))
+        },
+    };
+    Ok(answer)
 }
 
 pub async fn query(
@@ -67,8 +138,9 @@ pub async fn query(
     _funding_type: Option<String>,
     _description: Option<String>,
 ) -> Result<Vec<Funding>, Box<dyn std::error::Error>> {
-
-    println!("querying...");
+    
+    // TODO: the data should be pulled from a central db rather than csv files.
+    // Crunchbase API sucks and I don't want to rely on it.
 
     let mut fundings: Vec<Funding> = vec![];
 
@@ -128,79 +200,6 @@ pub async fn query(
         }
     }
 
-    // // TODO: I want to check if all the columns are present
-    // let mut file = File::open("data/fundings_lifestyle.csv")?;
-    // let mut data = String::new();
-    // file.read_to_string(&mut data)?;
-
-    // let mut reader = csv::Reader::from_reader(data.as_bytes());
-
-    // let mut duplicate_fundings: Vec<String> = Vec::new();
-    // let mut duplicate_count = 0;
-
-    // for result in reader.deserialize() {
-    //     let mut record: Funding = result?;
-    //     let exist = record_exists(&mut client, &record);
-    //     if exist {
-    //         duplicate_fundings.push(record.transaction_name.unwrap());
-    //         duplicate_count += 1;
-    //     } else {
-    //         insert_funding_record(&mut client, &mut record)?;
-    //     }
-    // }
-
-    // println!("Duplicate count: {}", duplicate_count);
-    // println!("Duplicate transactions: {:?}", duplicate_fundings);
-
-    // let exec = executor!()?;
-
-    // let step = Step::for_prompt_template(prompt!(
-    //     "You are an analytics bot which has access to a database with a table called 'fundings' which looks like the following: {{table_ddl}}",
-    //     "Based on this table, answer the following question: {{question}}"
-    // ));
-
-    // let mut file = File::open("schema.sql")?;
-    // let mut schema = String::new();
-    // file.read_to_string(&mut schema)?;
-
-    // let question = "generate a sql to get the fundings that are announced in the last 30 days in the wellness industry. Make sure to return the deals in the US.";
-    // let res = step
-    //     .run(&parameters!("table_ddl" => schema, "question" => question), &exec)
-    //     .await?;
-
-    // println!("{}", res);
-
-    // Ok(())
-
-    // Create a new ChatGPT executor with the default settings
-    // let exec = executor!()?;
-
-    // // Create the "map" step to summarize an article into bullet points
-    // let map_prompt = Step::for_prompt_template(prompt!(
-    //     "You are a bot for summarizing wikipedia articles, you are terse and focus on accuracy",
-    //     "Summarize this article into bullet points:\n{{text}}"
-    // ));
-
-    // // Create the "reduce" step to combine multiple summaries into one
-    // let reduce_prompt = Step::for_prompt_template(prompt!(
-    //     "You are a diligent bot that summarizes text",
-    //     "Please combine the articles below into one summary as bullet points:\n{{text}}"
-    // ));
-
-    // // Create a map-reduce chain with the map and reduce steps
-    // let chain = Chain::new(map_prompt, reduce_prompt);
-
-    // // Load the content of the article to be summarized
-    // let article = include_str!("../../article_to_summarize.md");
-
-    // // Create a vector with the Parameters object containing the text of the article
-    // let docs = vec![parameters!(article)];
-
-    // // Run the chain with the provided documents and an empty Parameters object for the "reduce" step
-    // let res = chain.run(docs, Parameters::new(), &exec).await.unwrap();
-
-    // // Print the result to the console
-    // println!("{}", res.to_immediate().await?.as_content());
     Ok(fundings)
 }
 

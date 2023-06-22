@@ -7,7 +7,9 @@ mod models;
 
 #[derive(Parser)]
 #[command(author, version)]
-#[command(about = "crunchbase - a simple CLI to fetch funding information from Crunchbase", long_about = "crunchbase is a super fancy CLI (kidding)")]
+#[command(
+    about = "crunchbase - a simple CLI to fetch funding information from Crunchbase", 
+)]
 
 struct Cli {
     #[command(subcommand)]
@@ -18,39 +20,16 @@ struct Cli {
 enum Commands {
     Query(Query),
     Import(Import),
-    Inquire(Inquire),
 }
 
 #[derive(Args)]
-struct Query {
-
-    #[arg(short='i', long="industry")]
-    industry: Option<String>,
-
-    #[arg(short='d', long="days")]
-    days: Option<i32>,
-
-    #[arg(short='c', long="currency")]
-    currency: Option<String>,
-
-    #[arg(short='f', long="funding_type")]
-    funding_type: Option<String>,
-
-    #[arg(short='e', long="description")]
-    description: Option<String>,
-
-    #[arg(short='l', long="limit")]
-    limit: Option<i64>,
-}
+struct Query {}
 
 #[derive(Args)]
 struct Import {
     #[arg(short='f', long="filename")]
     filename: Option<String>
 }
-
-#[derive(Args)]
-struct Inquire {}
 
 #[tokio::main]
 async fn main() {
@@ -68,7 +47,6 @@ async fn main() {
     }
 
     let (mut client, connection) = postgres.unwrap();
-
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             panic!("connection error: {}", e);
@@ -76,38 +54,18 @@ async fn main() {
     });
 
     match cli.command {
-        Some(Commands::Query(args)) => {
-            match api::query::query(
-                 &mut client,
-                 args.industry.clone(), 
-                 args.days.clone(), 
-                 args.limit.clone(), 
-                 args.currency.clone(), 
-                 args.funding_type.clone(), 
-                 args.description.clone()
-             ).await {
-                 Ok(res) => {
-                     api::util::display_table(&res);
-                 },
-                 Err(e) => {
-                     println!("Error {}", e);
-                 }
-            }
+        Some(Commands::Query(..)) => {
+            api::query::run_query_prompt(&mut client)
+                .await
+                .unwrap();
         }
         Some(Commands::Import(args)) => {
             api::import::run_import_prompt(&mut client, args.filename)
                 .await
                 .unwrap();
         }
-        Some(Commands::Inquire(..)) => {
-            let res = api::query::run_query_prompt(&mut client)
-                .await
-                .unwrap();
-            api::util::display_table(&res);
-        }
         None => {
             println!("Command is missing.");
         }
     }
-
 }

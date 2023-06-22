@@ -1,4 +1,3 @@
-use dotenv::dotenv;
 use inquire::Text;
 use std::fs::File;
 use std::io::Read;
@@ -8,25 +7,23 @@ use tokio_postgres::Client;
 
 const IMPORT_PROMPT: &str = "Enter the filename to import data from (the file has to be under \"./data\" directory):";
 
-pub async fn run_import_prompt(client: &mut Client, filename: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let filename_str: String;
-    if filename.is_none() {
-        filename_str = Text::new(IMPORT_PROMPT)
+pub async fn run_import_prompt(
+    client: &mut Client, 
+    filename: Option<String>
+) -> Result<(), Box<dyn std::error::Error>> {
+    let filename_str = match filename {
+        Some(f) => f,
+        None => Text::new(IMPORT_PROMPT)
             .prompt()
-            .unwrap();
-    } else {
-        filename_str = filename.unwrap();
-    }
+            .unwrap(),
+    };
     import(client, &filename_str).await
 }
 
-// TODO: Add a flag (e.g., --override -o) to indicate whether to update the existing rows with the new ones from the csv file
 pub async fn import(client: &mut Client, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Importing {filename}...");
 
-    dotenv().ok().unwrap();
-
-    // TODO: I want to check if all the columns are present
+    // TODO: Check if all the columns are present
     // TODO: Use buffer to handle large csv files (e.g., line by line) 
     let mut file = File::open(format!("data/{}", filename))?;
     let mut data = String::new();

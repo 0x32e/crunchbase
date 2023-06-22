@@ -3,7 +3,8 @@ use tabled::settings::{Color, style::BorderColor};
 use crate::models::Funding;
 use num_format::{Locale, ToFormattedString};
 
-pub fn display_table(fundings: &[Funding]) {
+#[allow(unused)]
+pub fn display_table(fundings: &[Funding]) -> String {
     let mut builder = Builder::default();
 
     for funding in fundings {
@@ -17,7 +18,7 @@ pub fn display_table(fundings: &[Funding]) {
         ]);
     }
 
-    let columns = [
+    let cols = [
         "Transaction Name",
         "Money Raised ($)",
         "Organization Name",
@@ -26,7 +27,7 @@ pub fn display_table(fundings: &[Funding]) {
         "Location",
     ];
 
-    let columns = (0..builder.count_columns()).map(|i| columns[i]);
+    let columns = (0..builder.count_columns()).map(|i| cols[i]);
     builder.set_header(columns);
 
     let mut table = builder.build();
@@ -36,7 +37,6 @@ pub fn display_table(fundings: &[Funding]) {
     table.with(BorderColor::default().left(Color::FG_GREEN));
     table.with(BorderColor::default().right(Color::FG_GREEN));
 
-    println!("{} funding(s) found:", fundings.len());
-    println!("{}", table);
+    format!("{}", table)
 }
 

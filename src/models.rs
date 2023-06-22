@@ -32,34 +32,39 @@ pub struct Funding {
     pub organization_website: Option<String>,
 }
 
-// struct Company {
-//     id: u64,
-//     name: String,
-//     description: String,
-//     url: Option<String>,
-//     location: Option<String>,
-//     website: Option<String>,
-//     industries: Option<String>, // TODO: Array of Industry struct?
-// }
+impl Funding {
+    pub fn columns() -> Vec<String> {
+        vec![
+            "Transaction Name".to_string(),
+            "Money Raised ($)".to_string(),
+            "Organization Name".to_string(),
+            "Website".to_string(),
+            "Announced Date".to_string(),
+            "Location".to_string(),
+        ]
+    }
+}
 
-/*
-CREATE TABLE fundings (
-    id SERIAL PRIMARY KEY,
-    transaction_name character varying(256) NOT NULL DEFAULT ''::character varying,
-    transaction_url character varying(256) NOT NULL DEFAULT ''::character varying,
-    organization_name character varying(256) NOT NULL DEFAULT ''::character varying,
-    organization_url character varying(256) NOT NULL DEFAULT ''::character varying,
-    funding_type character varying(256) NOT NULL DEFAULT ''::character varying,
-    money_raised bigint DEFAULT 0,
-    money_raised_currency character varying(256) DEFAULT ''::character varying,
-    money_raised_in_usd bigint DEFAULT 0,
-    announced_date character varying(256) NOT NULL DEFAULT 0,
-    number_of_investors integer,
-    number_of_funding_rounds integer,
-    organization_description character varying(256),
-    organization_industries character varying(256),
-    organization_location character varying(256),
-    organization_website character varying(256),
-    created timestamp without time zone DEFAULT now()
-);
- */
+pub struct Fundings(pub Vec<Funding>);
+
+impl Fundings {
+    pub fn to_csv_string(&self) -> String {
+        let mut buffer = Vec::new();
+        {
+            let mut wtr = csv::Writer::from_writer(&mut buffer);
+            let _ = wtr.write_record(&Funding::columns());
+            for funding in &self.0 {
+                let _ = wtr.write_record(&[
+                    funding.transaction_name.as_ref().unwrap(),
+                    &funding.money_raised_in_usd.as_ref().unwrap().to_string(),
+                    funding.organization_name.as_ref().unwrap_or(&String::from("N/A")),
+                    funding.organization_website.as_ref().unwrap_or(&String::from("N/A")),
+                    funding.announced_date.as_ref().unwrap_or(&String::from("N/A")),
+                    funding.organization_location.as_ref().unwrap_or(&String::from("N/A")),
+                ]);
+            }
+            let _ = wtr.flush();
+        }
+        String::from_utf8(buffer).ok().unwrap()
+    }
+}
