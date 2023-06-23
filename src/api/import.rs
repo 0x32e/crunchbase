@@ -47,8 +47,8 @@ pub async fn import(client: &mut Client, filename: &str) -> Result<(), Box<dyn s
         }
     }
 
-    println!("inserted: {}", inserted_count);
-    println!("already exists: {}", duplicate_count);
+    println!("Inserted: {}", inserted_count);
+    println!("Already exists: {}", duplicate_count);
 
     Ok(())
 }

@@ -37,9 +37,9 @@ async fn main() {
     dotenv().ok();
 
     let cli: Cli = Cli::parse();
-    let cb_postgres_uri = env::var("CB_POSTGRES_URI").expect("CB_POSTGRES_URI must be set");
+    let postgres_uri = env::var("POSTGRES_URI").expect("POSTGRES_URI must be set");
 
-    let postgres = tokio_postgres::connect(&cb_postgres_uri, tokio_postgres::NoTls).await;
+    let postgres = tokio_postgres::connect(&postgres_uri, tokio_postgres::NoTls).await;
 
     if let Err(e) = postgres {
         println!("Failed to connect to a Postgres db instance: {}", e);

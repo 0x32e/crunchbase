@@ -1,9 +1,3 @@
-/*
-TODO: 
-- Ask an LLM to answer a question against the "fundings" table.
-- (Separate) worker program monitors if there's any new csv files downloaded from Crunchbase, and grabs it and process it
- */
-
 use dotenv::dotenv;
 use openai_api_rs::v1::chat_completion::{ChatCompletionRequest, self, MessageRole};
 use std::env;
@@ -43,11 +37,12 @@ const DAYS_OPTIONS: &[&str] = &["5", "10", "15", "20", "30", "60"];
 const CURRENCY_PROMPT: &str = "Currency (e.g., USD):";
 const CURRENCY_OPTIONS: &[&str] = &["USD", "EUR", "CAD", "INR", "AUD", "GBP"];
 
-const QUESTION_PROMPT: &str = "Enter a question if you have any:";
+const QUESTION_PROMPT: &str = "Enter a question:";
 
 const SYSTEM_PROMPT: &str = "You are a business anaylyst at a VC firm with access to startup funding data. You try your best to answer user's question.";
 
-// Custom chat message model
+const FOLLOWUP_PROMPT: &str = "Ask any follow-up questions, or \"n\" to stop:";
+
 struct ChatMessage {
     content: String,
     role: chat_completion::MessageRole, 
@@ -64,7 +59,6 @@ impl Into<chat_completion::ChatCompletionMessage> for ChatMessage {
     }
 }
 
-// this is required since the original MessageRole doesn't conform to Clone
 impl Clone for ChatMessage {
     fn clone(&self) -> Self {
         let role = match self.role {
@@ -109,9 +103,7 @@ pub async fn run_query_prompt(
     ).await.unwrap();
 
     let question = Text::new(QUESTION_PROMPT)
-        .prompt_skippable()
-        .ok()
-        .unwrap()
+        .prompt()
         .unwrap();
 
     let fundings = Fundings(res);
@@ -145,7 +137,7 @@ pub async fn run_query_prompt(
             content: answer,
         });
 
-        let followup_message = Text::new("Ask any follow-up questions, or \"n\" to stop:")
+        let followup_message = Text::new(FOLLOWUP_PROMPT)
             .prompt()
             .unwrap();
         if followup_message == "n" {
@@ -164,10 +156,13 @@ pub async fn run_query_prompt(
 async fn answer(
     messages: &Vec<ChatMessage>
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let client = OpenAIClient::new(env::var("OPENAI_API_KEY").unwrap().to_string());
+    let client = OpenAIClient::new(env::var("OPENAI_API_KEY")
+        .unwrap()
+        .to_string()
+    );
     
     let req = ChatCompletionRequest {
-        model: chat_completion::GPT4.to_string(),
+        model: chat_completion::GPT3_5_TURBO.to_string(),
         messages: messages.iter().map(|m| m.clone().into()).collect(),
         functions: None,
         function_call: None,
@@ -179,6 +174,7 @@ async fn answer(
             return Err(CustomUserError::from(e));
         },
     };
+
     Ok(answer)
 }
 
@@ -195,7 +191,7 @@ async fn query(
     // Crunchbase API sucks and I don't want to rely on it.
 
     let mut fundings: Vec<Funding> = vec![];
-
+    
     let industry = industry
         .map_or("".to_owned(), |i|
             format!("and organization_industries LIKE CONCAT('%', '{}'::text, '%')", i).to_owned()
@@ -223,7 +219,8 @@ async fn query(
         money_raised_currency = $2
         {}
     ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC LIMIT 100", industry), &[&days.unwrap(), &currency.unwrap()]).await;
-
+    
+    // TODO: Rewrite this with combinators
     match res {
         Ok(rows) => {
             for row in rows {
@@ -248,6 +245,7 @@ async fn query(
         },
         Err(e) => {
             println!("Error: {}", e);
+            return Err(CustomUserError::from(e));
         }
     }
 
