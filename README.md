@@ -21,6 +21,8 @@ Startup funding data analyzer
 ### TODO
 1. Set up a central database for others to use upon approval.
 2. Integrate an LLM-based agent with tools (e.g., search, access to vector store, etc.)
+3. Add prompt templates
+4. Add plot capability
 
 ### Note
 - The quality of the answer is almost always better with GPT-4, but be aware of the cost.
