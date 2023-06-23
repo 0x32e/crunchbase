@@ -41,7 +41,7 @@ const DAYS_PROMPT: &str = "Days (e.g., last X days):";
 const DAYS_OPTIONS: &[&str] = &["5", "10", "15", "20", "30", "60"];
 
 const CURRENCY_PROMPT: &str = "Currency (e.g., USD):";
-const CURRENCY_OPTIONS: &[&str] = &["USD", "JPY", "CAD"];
+const CURRENCY_OPTIONS: &[&str] = &["USD", "EUR", "CAD", "INR", "AUD", "GBP"];
 
 const QUESTION_PROMPT: &str = "Enter a question if you have any:";
 
