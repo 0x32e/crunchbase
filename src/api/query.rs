@@ -120,6 +120,7 @@ pub async fn run_query_prompt(
         },
     ];
     
+    // TODO: Replace the following with a smart agent
     loop {
         let answer = match answer(&messages).await {
             Ok(a) => {
