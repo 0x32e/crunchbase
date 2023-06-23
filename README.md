@@ -26,3 +26,4 @@ Startup funding data analyzer
 
 ### Note
 - The quality of the answer is almost always better with GPT-4, but be aware of the cost.
+- If the context length limit is reached based on the data points, consider modifying the number of days to resolve the problem.
