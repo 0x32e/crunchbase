@@ -5,13 +5,76 @@ TODO:
  */
 
 use dotenv::dotenv;
+use openai_api_rs::v1::chat_completion::{ChatCompletionRequest, self, MessageRole};
 use std::env;
 use crate::models::{Funding, Fundings};
 
-use inquire::{Select, Text};
+use inquire::{Select, Text, CustomUserError};
 use tokio_postgres::Client;
 use openai_api_rs::v1::api::Client as OpenAIClient;
-use openai_api_rs::v1::completion::{self, CompletionRequest};
+
+const INDUSTRY_PROMPT: &str = "Industry:";
+// TODO: To be dynamically fetched
+const INDUSTRY_OPTIONS: &[&str] = &[
+    "Crypto",
+    "Artificial Intelligence",
+    "Financial Services",
+    "Wellness",
+    "Enterprise",
+    "Cloud Computing",
+    "Health Care",
+    "Blockchain",
+    "Energy",
+    "Software",
+    "Medical",
+    "Bio",
+    "E-Commerce",
+    "Food and Beverage",
+    "Manufacturing",
+    "Education",
+    "Robotics",
+    "Human Resources",
+    "Real Estate"
+];
+
+const DAYS_PROMPT: &str = "Days (e.g., last X days):";
+const DAYS_OPTIONS: &[&str] = &["5", "10", "15", "20", "30", "60"];
+
+const CURRENCY_PROMPT: &str = "Currency (e.g., USD):";
+const CURRENCY_OPTIONS: &[&str] = &["USD", "JPY", "CAD"];
+
+const QUESTION_PROMPT: &str = "Enter a question if you have any:";
+
+const SYSTEM_PROMPT: &str = "You are a business anaylyst at a VC firm with access to startup funding data. You try your best to answer user's question.";
+
+// Custom chat message model
+struct ChatMessage {
+    content: String,
+    role: chat_completion::MessageRole, 
+}
+
+impl Into<chat_completion::ChatCompletionMessage> for ChatMessage {
+    fn into(self) -> chat_completion::ChatCompletionMessage {
+        chat_completion::ChatCompletionMessage { 
+            role: self.role, 
+            content: Some(self.content), 
+            name: None, 
+            function_call: None 
+        }
+    }
+}
+
+// this is required since the original MessageRole doesn't conform to Clone
+impl Clone for ChatMessage {
+    fn clone(&self) -> Self {
+        let role = match self.role {
+            MessageRole::user => MessageRole::user,
+            MessageRole::system => MessageRole::system,
+            MessageRole::assistant => MessageRole::assistant,
+        };
+        ChatMessage { content: self.content.clone(), role }
+    }
+}
 
 pub async fn run_query_prompt(
     client: &mut Client
@@ -19,65 +82,33 @@ pub async fn run_query_prompt(
 
     dotenv().ok();
     
-    let industry_options = vec![
-        "Crypto",
-        "Artificial Intelligence",
-        "Financial Services",
-        "Wellness",
-        "Enterprise",
-        "Cloud Computing",
-        "Health Care",
-        "Blockchain",
-        "Energy",
-        "Software",
-        "Medical",
-        "Bio",
-        "E-Commerce",
-        "Food and Beverage",
-        "Manufacturing",
-        "Education",
-        "Robotics",
-        "Human Resources",
-        "Real Estate"
-    ];
-
-    let industry = Select::new("Select industry:", industry_options)
+    let industry = Select::new(INDUSTRY_PROMPT, INDUSTRY_OPTIONS.to_vec())
         .prompt()
         .unwrap()
         .to_owned();
     
-    let days = Select::new("Days (e.g., last X days):", vec!["5", "10", "15", "20", "30", "60"])
+    let days = Select::new(DAYS_PROMPT, DAYS_OPTIONS.to_vec())
         .prompt()
         .unwrap()
         .to_owned()
         .parse::<i32>()
         .unwrap();
 
-    let currency = Select::new("Currency (e.g., USD):", vec!["USD", "JPY", "CAD"])
+    let currency = Select::new(CURRENCY_PROMPT, CURRENCY_OPTIONS.to_vec())
         .prompt()
         .unwrap()
         .to_owned();
     
-    let limit = Select::new(
-        "How many max results do you want? (i.e., limit)", 
-        vec!["10", "20", "30", "60"]
-    )
-        .prompt()
-        .unwrap()
-        .parse::<i64>()
-        .unwrap();
-
     let res = query(
         client, 
         Some(industry), 
         Some(days), 
-        Some(limit), 
         Some(currency), 
         None, 
         None
     ).await.unwrap();
 
-    let question = Text::new("Enter a question if you have any:")
+    let question = Text::new(QUESTION_PROMPT)
         .prompt_skippable()
         .ok()
         .unwrap()
@@ -86,54 +117,75 @@ pub async fn run_query_prompt(
     let fundings = Fundings(res);
     let context = fundings.to_csv_string();
 
-    let answer = answer(&context, &question).await.unwrap();
-    println!("answer: {}", answer);
+    let mut messages = vec![
+        ChatMessage {
+            role: MessageRole::system,
+            content: format!("{}\nContext:\n{}", SYSTEM_PROMPT, context),
+        },
+        ChatMessage {
+            role: chat_completion::MessageRole::user,
+            content: format!("Question: {}", question),
+        },
+    ];
+    
+    loop {
+        let answer = match answer(&messages).await {
+            Ok(a) => {
+                println!("Answer: {}", a);
+                a
+            },
+            Err(e) => {
+                println!("Error occurrerd: {}", e);
+                break;
+            }
+        };
+
+        messages.push(ChatMessage{
+            role: MessageRole::assistant,
+            content: answer,
+        });
+
+        let followup_message = Text::new("Ask any follow-up questions, or \"n\" to stop:")
+            .prompt()
+            .unwrap();
+        if followup_message == "n" {
+            break;
+        } else {
+            messages.push(ChatMessage{
+                role: MessageRole::user,
+                content: followup_message,
+            });
+        }
+    }
 
     Ok(())
 }
 
 async fn answer(
-    context: &str, 
-    question: &str
+    messages: &Vec<ChatMessage>
 ) -> Result<String, Box<dyn std::error::Error>> {
     let client = OpenAIClient::new(env::var("OPENAI_API_KEY").unwrap().to_string());
-    let prompt = format!("You have the following data: {}
-    ==========
-    Based on these data, answer the following question: {}:\n", context, question);
-    // println!("Prompt: {}", prompt);
-    let req = CompletionRequest {
-        model: completion::GPT3_TEXT_DAVINCI_003.to_string(),
-        prompt: Some(String::from(prompt)),
-        suffix: None,
-        max_tokens: Some(2000),
-        temperature: Some(0.0),
-        top_p: Some(1.0),
-        n: None,
-        stream: None,
-        logprobs: None,
-        echo: None,
-        stop: Some(vec![String::from(" Human:"), String::from(" AI:")]),
-        presence_penalty: Some(0.6),
-        frequency_penalty: Some(0.0),
-        best_of: None,
-        logit_bias: None,
-        user: None,
+    
+    let req = ChatCompletionRequest {
+        model: chat_completion::GPT4.to_string(),
+        messages: messages.iter().map(|m| m.clone().into()).collect(),
+        functions: None,
+        function_call: None,
     };
 
-    let answer = match client.completion(req).await {
-        Ok(a) => a.choices[0].text.clone(),
+    let answer = match client.chat_completion(req).await {
+        Ok(a) => a.choices[0].message.content.clone().unwrap(),
         Err(e) => {
-            String::from(format!("Failed: {}", e))
+            return Err(CustomUserError::from(e));
         },
     };
     Ok(answer)
 }
 
-pub async fn query(
+async fn query(
     client: &mut Client,
     industry: Option<String>, 
     days: Option<i32>,
-    limit: Option<i64>,
     currency: Option<String>,
     _funding_type: Option<String>,
     _description: Option<String>,
@@ -170,8 +222,7 @@ pub async fn query(
         TO_DATE(announced_date, 'YYYY-MM-DD') >= CURRENT_DATE - make_interval(days := $1) and
         money_raised_currency = $2
         {}
-    ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC
-    LIMIT $3", industry), &[&days.unwrap(), &currency.unwrap(), &limit.unwrap()]).await;
+    ORDER BY TO_DATE(announced_date, 'YYYY-MM-DD') DESC LIMIT 100", industry), &[&days.unwrap(), &currency.unwrap()]).await;
 
     match res {
         Ok(rows) => {

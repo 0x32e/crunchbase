@@ -41,6 +41,8 @@ impl Funding {
             "Website".to_string(),
             "Announced Date".to_string(),
             "Location".to_string(),
+            "Industries".to_string(),
+            "Company Description".to_string(),
         ]
     }
 }
@@ -61,6 +63,8 @@ impl Fundings {
                     funding.organization_website.as_ref().unwrap_or(&String::from("N/A")),
                     funding.announced_date.as_ref().unwrap_or(&String::from("N/A")),
                     funding.organization_location.as_ref().unwrap_or(&String::from("N/A")),
+                    funding.organization_industries.as_ref().unwrap_or(&String::from("N/A")),
+                    funding.organization_description.as_ref().unwrap_or(&String::from("N/A")),
                 ]);
             }
             let _ = wtr.flush();
