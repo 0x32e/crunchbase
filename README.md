@@ -12,6 +12,12 @@ Startup funding data analyzer
 3. Importing a csv file into the db.
 4. Asking questions for the fetched funding data in natural language.
 
+### Usage
+
+1. ```cargo build --release```
+2. Import: ```./target/release/crunchbase import```
+3. Query: ```./target/release/crunchbase query```
+
 ### TODO
 1. Set up a central database for others to use upon approval.
 2. Integrate an LLM-based agent with tools (e.g., search, access to vector store, etc.)
