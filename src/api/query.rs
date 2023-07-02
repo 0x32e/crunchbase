@@ -95,7 +95,7 @@ pub async fn run_query_prompt(
     
     let res = query(
         client, 
-        Some(industry), 
+        Some(industry.clone()), 
         Some(days), 
         Some(currency), 
         None, 
@@ -112,7 +112,7 @@ pub async fn run_query_prompt(
     let mut messages = vec![
         ChatMessage {
             role: MessageRole::system,
-            content: format!("{}\nContext:\n{}", SYSTEM_PROMPT, context),
+            content: format!("{}\nThe domain of the data points is {}\nContext:\n{}", SYSTEM_PROMPT, industry.clone(), context),
         },
         ChatMessage {
             role: chat_completion::MessageRole::user,

@@ -28,7 +28,10 @@ struct Query {}
 #[derive(Args)]
 struct Import {
     #[arg(short='f', long="filename")]
-    filename: Option<String>
+    filename: Option<String>,
+    
+    #[arg(short='a', long="all", default_value_t=false)]
+    all: bool
 }
 
 #[tokio::main]
@@ -60,7 +63,7 @@ async fn main() {
                 .unwrap();
         }
         Some(Commands::Import(args)) => {
-            api::import::run_import_prompt(&mut client, args.filename)
+            api::import::run_import_prompt(&mut client, args.filename, args.all)
                 .await
                 .unwrap();
         }

@@ -1,6 +1,7 @@
 use inquire::Text;
 use std::fs::File;
 use std::io::Read;
+use std::fs::read_dir;
 
 use crate::models::Funding;
 use tokio_postgres::Client;
@@ -9,15 +10,30 @@ const IMPORT_PROMPT: &str = "Enter the filename to import data from (the file ha
 
 pub async fn run_import_prompt(
     client: &mut Client, 
-    filename: Option<String>
+    filename: Option<String>,
+    all: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let filename_str = match filename {
-        Some(f) => f,
-        None => Text::new(IMPORT_PROMPT)
-            .prompt()
-            .unwrap(),
-    };
-    import(client, &filename_str).await
+    if all {
+        import_all(client).await
+    } else {
+        let filename_str = match filename {
+            Some(f) => f,
+            None => Text::new(IMPORT_PROMPT)
+                .prompt()
+                .unwrap(),
+        };
+        import(client, &filename_str).await
+    }
+}
+
+pub async fn import_all(client: &mut Client) -> Result<(), Box<dyn std::error::Error>> {
+    // Read all the files inside /data directory, and import the file serially
+    let paths = read_dir("./data").unwrap();
+    for path in paths {
+        let filename = path.unwrap().file_name().to_str().unwrap().to_string();
+        let _ = import(client, &filename).await;
+    }
+    Ok(())
 }
 
 pub async fn import(client: &mut Client, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
