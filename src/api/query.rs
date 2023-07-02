@@ -155,7 +155,7 @@ pub async fn run_query_prompt(
 }
 
 async fn answer(
-    messages: &Vec<ChatMessage>
+    messages: &[ChatMessage]
 ) -> Result<String, Box<dyn std::error::Error>> {
     let client = OpenAIClient::new(env::var("OPENAI_API_KEY")
         .unwrap()
@@ -163,7 +163,7 @@ async fn answer(
     );
     
     let req = ChatCompletionRequest {
-        model: chat_completion::GPT3_5_TURBO.to_string(),
+        model: chat_completion::GPT4.to_string(),
         messages: messages.iter().map(|m| m.clone().into()).collect(),
         functions: None,
         function_call: None,
