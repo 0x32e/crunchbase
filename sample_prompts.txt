@@ -1,0 +1,18 @@
+1. How much money was raised by which organizations in the last quarter?
+2. What is the total money raised by different funding types?
+3. What are the hottest industries for investments? 
+4. What was the most recent funding round announced? 
+5. What are some of the most well-funded organizations? 
+6. What is the average number of investors in a funding round? 
+7. What location has seen the most investments?
+8. Who are the most active investors in a particular industry?
+9. How have investments changed over the past year?
+10. How much money has been raised in each currency?"
+11. What organizations stand out when looking at the total money raised?
+12. What are the most well-funded companies based on the funding data points?
+13. Are there any companies that have raised money outside of their normal funding type?
+14. Are there any companies with a high number of investors compared to other companies?
+15. Are there any companies that have raised a large amount of money in an atypical timeframe?
+16. Are there any organizations that have had a large number of funding rounds compared to other companies?
+17. Are there any organizations whose industries, locations, or descriptions stand out when considering the funding data points?
+18. Are there any organizations with abnormal amounts of money raised in their respective currency versus USD?
